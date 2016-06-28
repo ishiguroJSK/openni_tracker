@@ -10,6 +10,9 @@
 #include <XnCodecIDs.h>
 #include <XnCppWrapper.h>
 
+#include <std_msgs/Int32.h>
+#include <geometry_msgs/WrenchStamped.h>
+
 using std::string;
 
 xn::Context        g_Context;
@@ -19,7 +22,7 @@ xn::UserGenerator  g_UserGenerator;
 XnBool g_bNeedPose   = FALSE;
 XnChar g_strPose[20] = "";
 
-ros::Publisher com_pub, rf_pub, lf_pub, rh_pub, lh_pub;
+ros::Publisher com_pub, rf_pub, lf_pub, rh_pub, lh_pub, h2r_ratio_pub;
 
 void XN_CALLBACK_TYPE User_NewUser(xn::UserGenerator& generator, XnUserID nId, void* pCookie) {
 	ROS_INFO("New User %d", nId);
@@ -166,6 +169,47 @@ void publishTransforms(const std::string& frame_id) {
 		return nRetVal;												\
 	}
 
+
+double rfw[6],lfw[6];
+
+void onZMPCB(const geometry_msgs::PointStampedConstPtr& msg) {
+    std::cout<<"/zmp_robot"<<msg->point.x<<" , "<<msg->point.y<<std::endl;//BODY座標
+    
+
+    double rfzmp[2],lfzmp[2];
+    double zmpans[3];//世界座標
+    const double F_H_OFFSET = 0.03;
+    const double rfpos[3] = {0,-0.1,0},lfpos[3] = {0,0.1,0};
+
+    if( rfw[2] > 1.0e-6 ){
+	    rfzmp[0] = ( -rfw[4] - rfw[0] * F_H_OFFSET + rfw[2] * 0 ) / rfw[2] + rfpos[0];
+	    rfzmp[1] = ( rfw[3] - rfw[1] * F_H_OFFSET + rfw[2] * 0 ) / rfw[2] + rfpos[1];
+    }
+    if( lfw[2] > 1.0e-6 ){
+	    lfzmp[0] = ( -lfw[4] - lfw[0] * F_H_OFFSET + lfw[2] * 0 ) / lfw[2] + lfpos[0];
+	    lfzmp[1] = ( lfw[3] - lfw[1] * F_H_OFFSET + lfw[2] * 0 ) / lfw[2] + lfpos[1];
+    }
+    //zmpansをrfw,lfwから計算
+    if( rfw[2] > 1.0e-6 || lfw[2] > 1.0e-6 ){
+	    zmpans[0] = ( rfzmp[0]*rfw[2] + lfzmp[0]*lfw[2] ) / ( rfw[2] + lfw[2]);
+	    zmpans[1] = ( rfzmp[1]*rfw[2] + lfzmp[1]*lfw[2] ) / ( rfw[2] + lfw[2]);
+	    zmpans[2] = 0;
+    }else{
+	    zmpans[0] = 0;	zmpans[1] = 0;	zmpans[2] = 0;
+    }
+    std::cout<<"/zmp_human"<<zmpans[0]<<" , "<<zmpans[1]<<std::endl;//BODY座標
+
+    
+}
+void onRFWCB(const geometry_msgs::WrenchStampedConstPtr& msg) {
+	rfw[0] = msg->wrench.force.x;	rfw[1] = msg->wrench.force.y;	rfw[2] = msg->wrench.force.z;
+	rfw[3] = msg->wrench.torque.x;	rfw[4] = msg->wrench.torque.y;	rfw[5] = msg->wrench.torque.z;
+}
+void onLFWCB(const geometry_msgs::WrenchStampedConstPtr& msg) {
+	lfw[0] = msg->wrench.force.x;	lfw[1] = msg->wrench.force.y;	lfw[2] = msg->wrench.force.z;
+	lfw[3] = msg->wrench.torque.x;	lfw[4] = msg->wrench.torque.y;	lfw[5] = msg->wrench.torque.z;
+}
+
 int main(int argc, char **argv) {
     ros::init(argc, argv, "openni_tracker");
     ros::NodeHandle nh;
@@ -174,6 +218,11 @@ int main(int argc, char **argv) {
 	lf_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_lf_ref", 10);
 	rh_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_rh_ref", 10);
 	lh_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_lh_ref", 10);
+	h2r_ratio_pub = nh.advertise<std_msgs::Int32>("/human_tracker_h2r_ratio", 10);
+	
+    ros::Subscriber zmp_sub = nh.subscribe("/zmp", 1, &onZMPCB);
+    ros::Subscriber rfw_sub = nh.subscribe("/human_tracker_rfw_ref", 1, &onRFWCB);
+    ros::Subscriber lfw_sub = nh.subscribe("/human_tracker_lfw_ref", 1, &onLFWCB);
 
     string configFilename = ros::package::getPath("openni_tracker") + "/openni_tracker.xml";
     XnStatus nRetVal = g_Context.InitFromXmlFile(configFilename.c_str());
