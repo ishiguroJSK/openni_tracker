@@ -10,7 +10,7 @@
 #include <XnCodecIDs.h>
 #include <XnCppWrapper.h>
 
-#include <std_msgs/Int32.h>
+#include <std_msgs/Float64.h>
 #include <geometry_msgs/WrenchStamped.h>
 
 using std::string;
@@ -22,7 +22,7 @@ xn::UserGenerator  g_UserGenerator;
 XnBool g_bNeedPose   = FALSE;
 XnChar g_strPose[20] = "";
 
-ros::Publisher com_pub, rf_pub, lf_pub, rh_pub, lh_pub, h2r_ratio_pub;
+ros::Publisher com_pub, rf_pub, lf_pub, rh_pub, lh_pub, h2r_ratio_pub, h_zmp_pub, r_zmp_pub;
 
 void XN_CALLBACK_TYPE User_NewUser(xn::UserGenerator& generator, XnUserID nId, void* pCookie) {
 	ROS_INFO("New User %d", nId);
@@ -60,6 +60,7 @@ void XN_CALLBACK_TYPE UserPose_PoseDetected(xn::PoseDetectionCapability& capabil
     g_UserGenerator.GetPoseDetectionCap().StopPoseDetection(nId);
     g_UserGenerator.GetSkeletonCap().RequestCalibration(nId, TRUE);
 }
+
 
 void publishTransform(XnUserID const& user, XnSkeletonJoint const& joint, string const& frame_id, string const& child_frame_id) {
     static tf::TransformBroadcaster br;
@@ -99,6 +100,16 @@ void publishTransform(XnUserID const& user, XnSkeletonJoint const& joint, string
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), frame_id, child_frame_no));
 }
 
+bool do_check = false;
+double h2r_ratio = 0.8;//初期値
+//double h2r_ratio = 0.3;//初期値
+double zmpin[3];//世界座標
+double zmpans[3];//世界座標
+#include <tf/transform_listener.h>
+tf::StampedTransform transform;
+double rfw[6],lfw[6],basepos[3];
+FILE* fp;
+
 void publishTransforms(const std::string& frame_id) {
     XnUserID users[15];
     XnUInt16 users_count = 15;
@@ -110,8 +121,8 @@ void publishTransforms(const std::string& frame_id) {
     msg.header.stamp = ros::Time::now();
 	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_TORSO, joint_position);
 	msg.point.x = -joint_position.position.Z / 1000.0;
-	msg.point.y = joint_position.position.X / 1000.0;
-	msg.point.z = joint_position.position.Y / 1000.0;
+	msg.point.y = joint_position.position.X / 1000.0 * h2r_ratio;
+	msg.point.z = joint_position.position.Y / 1000.0 * h2r_ratio;
     com_pub.publish(msg);
 	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_FOOT, joint_position);
 	msg.point.x = -joint_position.position.Z / 1000.0;
@@ -159,7 +170,27 @@ void publishTransforms(const std::string& frame_id) {
         publishTransform(user, XN_SKEL_RIGHT_HIP,      frame_id, "right_hip");
         publishTransform(user, XN_SKEL_RIGHT_KNEE,     frame_id, "right_knee");
         publishTransform(user, XN_SKEL_RIGHT_FOOT,     frame_id, "right_foot");
+
+
+	    fprintf(fp,"zmp: %f %f %f %f %f\n",zmpin[0],zmpin[1],(zmpans[0] - basepos[0]),(zmpans[1] - basepos[1]),h2r_ratio);
+	    const int errnum = 30*10;
+	    static double err_point[errnum];
+	    double err_sum = 0;
+	    for(int i=0;i<errnum-1;i++){err_point[i+1] = err_point[i];}
+	    err_point[0] =  fabs(zmpans[1]-basepos[1]) - fabs(zmpin[1]);//real - ref
+	    for(int i=0;i<errnum;i++){err_sum += err_point[i];}
+//	    if(err_sum>0.1 ){h2r_ratio += 0.001;std::cout<<"h2r_ratio UP:"<<h2r_ratio<<" (EP):"<<err_sum<<std::endl;}
+//	    if(err_sum<-0.1 ){h2r_ratio -= 0.001;std::cout<<"h2r_ratio DOWN:"<<h2r_ratio<<" (EP):"<<err_sum<<std::endl;}
+	    std_msgs::Float64 visudata;
+	    visudata.data = zmpin[1];
+	    r_zmp_pub.publish(visudata);
+	    visudata.data = zmpans[1] - basepos[1];
+	    h_zmp_pub.publish(visudata);
+	    visudata.data = h2r_ratio;
+	    h2r_ratio_pub.publish(visudata);
     }
+
+
 }
 
 #define CHECK_RC(nRetVal, what)										\
@@ -170,14 +201,15 @@ void publishTransforms(const std::string& frame_id) {
 	}
 
 
-double rfw[6],lfw[6];
+
 
 void onZMPCB(const geometry_msgs::PointStampedConstPtr& msg) {
-    std::cout<<"/zmp_robot"<<msg->point.x<<" , "<<msg->point.y<<std::endl;//BODY座標
-    
 
+	static tf::TransformListener ht_tf_listener;
+	zmpin[0] = msg->point.x;
+	zmpin[1] = msg->point.y;
+	zmpin[2] = msg->point.z;
     double rfzmp[2],lfzmp[2];
-    double zmpans[3];//世界座標
     const double F_H_OFFSET = 0.03;
     const double rfpos[3] = {0,-0.1,0},lfpos[3] = {0,0.1,0};
 
@@ -197,8 +229,10 @@ void onZMPCB(const geometry_msgs::PointStampedConstPtr& msg) {
     }else{
 	    zmpans[0] = 0;	zmpans[1] = 0;	zmpans[2] = 0;
     }
-    std::cout<<"/zmp_human"<<zmpans[0]<<" , "<<zmpans[1]<<std::endl;//BODY座標
-
+//    for(int i=0;i<3;i++){
+//    	zmpans[i] = zmpans[i] - human_basepos[i];
+//    }
+//	std::cout<<"/zmp: "<<msg->point.x<<" , "<<msg->point.y<<std::endl;//BODY座標
     
 }
 void onRFWCB(const geometry_msgs::WrenchStampedConstPtr& msg) {
@@ -209,8 +243,12 @@ void onLFWCB(const geometry_msgs::WrenchStampedConstPtr& msg) {
 	lfw[0] = msg->wrench.force.x;	lfw[1] = msg->wrench.force.y;	lfw[2] = msg->wrench.force.z;
 	lfw[3] = msg->wrench.torque.x;	lfw[4] = msg->wrench.torque.y;	lfw[5] = msg->wrench.torque.z;
 }
+void onBPCB(const geometry_msgs::PointStampedConstPtr& msg) {
+	basepos[0] = msg->point.x;	basepos[1] = msg->point.y;	basepos[2] = msg->point.z;
+}
 
 int main(int argc, char **argv) {
+	fp = fopen("/home/ishiguro/hcflog/nilog.log","w+");
     ros::init(argc, argv, "openni_tracker");
     ros::NodeHandle nh;
 	com_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_com_ref", 10);
@@ -218,11 +256,14 @@ int main(int argc, char **argv) {
 	lf_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_lf_ref", 10);
 	rh_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_rh_ref", 10);
 	lh_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_lh_ref", 10);
-	h2r_ratio_pub = nh.advertise<std_msgs::Int32>("/human_tracker_h2r_ratio", 10);
+	h2r_ratio_pub = nh.advertise<std_msgs::Float64>("/human_tracker_h2r_ratio", 10);
+	h_zmp_pub = nh.advertise<std_msgs::Float64>("/human_tracker_human_zmp", 10);
+	r_zmp_pub = nh.advertise<std_msgs::Float64>("/human_tracker_robot_zmp", 10);
 	
     ros::Subscriber zmp_sub = nh.subscribe("/zmp", 1, &onZMPCB);
     ros::Subscriber rfw_sub = nh.subscribe("/human_tracker_rfw_ref", 1, &onRFWCB);
     ros::Subscriber lfw_sub = nh.subscribe("/human_tracker_lfw_ref", 1, &onLFWCB);
+    ros::Subscriber basepos_sub = nh.subscribe("/basepos_ht", 1, &onBPCB);
 
     string configFilename = ros::package::getPath("openni_tracker") + "/openni_tracker.xml";
     XnStatus nRetVal = g_Context.InitFromXmlFile(configFilename.c_str());
@@ -279,9 +320,11 @@ int main(int argc, char **argv) {
 	while (ros::ok()) {
 		g_Context.WaitAndUpdateAll();
 		publishTransforms(frame_id);
+		ros::spinOnce();
 		r.sleep();
 	}
 
 	g_Context.Shutdown();
+    fclose(fp);
 	return 0;
 }
