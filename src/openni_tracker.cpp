@@ -101,7 +101,7 @@ void publishTransform(XnUserID const& user, XnSkeletonJoint const& joint, string
 }
 
 bool do_check = false;
-double h2r_ratio = 0.8;//初期値
+double h2r_ratio = 1.0;//初期値
 //double h2r_ratio = 0.3;//初期値
 double zmpin[3];//世界座標
 double zmpans[3];//世界座標
@@ -172,22 +172,29 @@ void publishTransforms(const std::string& frame_id) {
         publishTransform(user, XN_SKEL_RIGHT_FOOT,     frame_id, "right_foot");
 
 
-	    fprintf(fp,"zmp: %f %f %f %f %f\n",zmpin[0],zmpin[1],(zmpans[0] - basepos[0]),(zmpans[1] - basepos[1]),h2r_ratio);
-	    const int errnum = 30*10;
-	    static double err_point[errnum];
-	    double err_sum = 0;
-	    for(int i=0;i<errnum-1;i++){err_point[i+1] = err_point[i];}
-	    err_point[0] =  fabs(zmpans[1]-basepos[1]) - fabs(zmpin[1]);//real - ref
-	    for(int i=0;i<errnum;i++){err_sum += err_point[i];}
-//	    if(err_sum>0.1 ){h2r_ratio += 0.001;std::cout<<"h2r_ratio UP:"<<h2r_ratio<<" (EP):"<<err_sum<<std::endl;}
-//	    if(err_sum<-0.1 ){h2r_ratio -= 0.001;std::cout<<"h2r_ratio DOWN:"<<h2r_ratio<<" (EP):"<<err_sum<<std::endl;}
-	    std_msgs::Float64 visudata;
-	    visudata.data = zmpin[1];
-	    r_zmp_pub.publish(visudata);
-	    visudata.data = zmpans[1] - basepos[1];
-	    h_zmp_pub.publish(visudata);
-	    visudata.data = h2r_ratio;
-	    h2r_ratio_pub.publish(visudata);
+//	    fprintf(fp,"zmp: %f %f %f %f %f\n",zmpin[0],zmpin[1],(zmpans[0] - basepos[0]),(zmpans[1] - basepos[1]),h2r_ratio);
+//	    const int errnum = 30*3;
+//	    static double err_point[errnum];
+//	    double err_sum = 0;
+//	    for(int i=0;i<errnum-1;i++){err_point[i+1] = err_point[i];}
+//	    err_point[0] =  fabs(zmpans[1]-basepos[1]) - fabs(zmpin[1]);//real - ref
+//	    for(int i=0;i<errnum;i++){err_sum += err_point[i];}
+//	    static int loop = 0;
+//
+//	    if(loop%errnum==0){
+//			if(err_sum>0.1 ){h2r_ratio += 0.01;std::cout<<"h2r_ratio UP:"<<h2r_ratio<<" (EP):"<<err_sum<<std::endl;}
+//			else if(err_sum<-0.1 ){h2r_ratio -= 0.01;std::cout<<"h2r_ratio DOWN:"<<h2r_ratio<<" (EP):"<<err_sum<<std::endl;}
+//			else{std::cout<<"h2r_ratio KEEP:"<<h2r_ratio<<" (EP):"<<err_sum<<std::endl;}
+//	    }
+//	    loop++;
+//
+//	    std_msgs::Float64 visudata;
+//	    visudata.data = zmpin[1];
+//	    r_zmp_pub.publish(visudata);
+//	    visudata.data = zmpans[1] - basepos[1];
+//	    h_zmp_pub.publish(visudata);
+//	    visudata.data = h2r_ratio;
+//	    h2r_ratio_pub.publish(visudata);
     }
 
 
