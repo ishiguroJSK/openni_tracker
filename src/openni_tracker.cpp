@@ -124,12 +124,12 @@ void publishTransforms(const std::string& frame_id) {
 	msg.point.y = joint_position.position.X / 1000.0 * h2r_ratio;
 	msg.point.z = joint_position.position.Y / 1000.0 * h2r_ratio;
     com_pub.publish(msg);
-	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_FOOT, joint_position);
+	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_LEFT_FOOT, joint_position);//何故か逆
 	msg.point.x = -joint_position.position.Z / 1000.0;
 	msg.point.y = joint_position.position.X / 1000.0;
 	msg.point.z = joint_position.position.Y / 1000.0;
     rf_pub.publish(msg);
-	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_LEFT_FOOT, joint_position);
+	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_FOOT, joint_position);//何故か逆
 	msg.point.x = -joint_position.position.Z / 1000.0;
 	msg.point.y = joint_position.position.X / 1000.0;
 	msg.point.z = joint_position.position.Y / 1000.0;
@@ -139,7 +139,7 @@ void publishTransforms(const std::string& frame_id) {
 	msg.point.y = joint_position.position.X / 1000.0;
 	msg.point.z = joint_position.position.Y / 1000.0;
     rh_pub.publish(msg);
-	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_HAND, joint_position);
+	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_HAND, joint_position);//何故か逆
 	msg.point.x = -joint_position.position.Z / 1000.0;
 	msg.point.y = joint_position.position.X / 1000.0;
 	msg.point.z = joint_position.position.Y / 1000.0;
