@@ -22,7 +22,7 @@ xn::UserGenerator  g_UserGenerator;
 XnBool g_bNeedPose   = FALSE;
 XnChar g_strPose[20] = "";
 
-ros::Publisher com_pub, rf_pub, lf_pub, rh_pub, lh_pub, h2r_ratio_pub, h_zmp_pub, r_zmp_pub;
+ros::Publisher com_pub, rf_pub, lf_pub, rh_pub, lh_pub;
 
 void XN_CALLBACK_TYPE User_NewUser(xn::UserGenerator& generator, XnUserID nId, void* pCookie) {
 	ROS_INFO("New User %d", nId);
@@ -101,83 +101,78 @@ void publishTransform(XnUserID const& user, XnSkeletonJoint const& joint, string
 }
 
 bool do_check = false;
-double zmpin[3];//世界座標
-double zmpans[3];//世界座標
 #include <tf/transform_listener.h>
 tf::StampedTransform transform;
-double rfw[6],lfw[6],basepos[3];
-FILE* fp;
-#define USEX true
-//#define USEX false
-#define USEY true
-//#define USEY false
-#define USEZ true
-//#define USEZ false
 
 void publishTransforms(const std::string& frame_id) {
-    XnUserID users[15];
-    XnUInt16 users_count = 15;
-    g_UserGenerator.GetUsers(users, users_count);
+  XnUserID users[15];
+  XnUInt16 users_count = 15;
+  g_UserGenerator.GetUsers(users, users_count);
 
-    geometry_msgs::PointStamped msg;
-	XnSkeletonJointPosition joint_position;
-    msg.header.frame_id = "camera_link";//ホントは違う
-    msg.header.stamp = ros::Time::now();
-	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_TORSO, joint_position);
-	if(USEX)msg.point.x = -joint_position.position.Z / 1000.0;
-	if(USEY)msg.point.y = joint_position.position.X / 1000.0;
-	if(USEZ)msg.point.z = joint_position.position.Y / 1000.0;
-    com_pub.publish(msg);
-	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_LEFT_FOOT, joint_position);//何故か逆
-	if(USEX)msg.point.x = -joint_position.position.Z / 1000.0;
-	if(USEY)msg.point.y = joint_position.position.X / 1000.0;
-	if(USEZ)msg.point.z = joint_position.position.Y / 1000.0;
-    rf_pub.publish(msg);
-	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_FOOT, joint_position);//何故か逆
-	if(USEX)msg.point.x = -joint_position.position.Z / 1000.0;
-	if(USEY)msg.point.y = joint_position.position.X / 1000.0;
-	if(USEZ)msg.point.z = joint_position.position.Y / 1000.0;
-    lf_pub.publish(msg);
-	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_LEFT_HAND, joint_position);//何故か逆
-	if(USEX)msg.point.x = -joint_position.position.Z / 1000.0;
-	if(USEY)msg.point.y = joint_position.position.X / 1000.0;
-	if(USEZ)msg.point.z = joint_position.position.Y / 1000.0;
-    rh_pub.publish(msg);
-	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_HAND, joint_position);//何故か逆
-	if(USEX)msg.point.x = -joint_position.position.Z / 1000.0;
-	if(USEY)msg.point.y = joint_position.position.X / 1000.0;
-	if(USEZ)msg.point.z = joint_position.position.Y / 1000.0;
-    lh_pub.publish(msg);
+  geometry_msgs::PointStamped msg;
+  XnSkeletonJointPosition joint_position;
+  msg.header.frame_id = "camera_link";//ホントは違う
+  msg.header.stamp = ros::Time::now();
+  //COMとして体幹位置を送る
+//  	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_TORSO, joint_position);
+//  	msg.point.x = -joint_position.position.Z / 1000.0;
+//  	msg.point.y = joint_position.position.X / 1000.0;
+//  	msg.point.z = joint_position.position.Y / 1000.0;
+//      com_pub.publish(msg);
 
-    for (int i = 0; i < users_count; ++i) {
-        XnUserID user = users[i];
-        if (!g_UserGenerator.GetSkeletonCap().IsTracking(user))
-            continue;
+  //COMとしてCOMを送る
+  XnPoint3D com_position;
+  g_UserGenerator.GetCoM(users[0], com_position);
+  msg.point.x = -com_position.Z / 1000.0;
+  msg.point.y = com_position.X / 1000.0;
+  msg.point.z = com_position.Y / 1000.0;
+  com_pub.publish(msg);
+  g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_LEFT_FOOT, joint_position);//何故か逆
+  msg.point.x = -joint_position.position.Z / 1000.0;
+  msg.point.y = joint_position.position.X / 1000.0;
+  msg.point.z = joint_position.position.Y / 1000.0;
+  rf_pub.publish(msg);
+  g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_FOOT, joint_position);//何故か逆
+  msg.point.x = -joint_position.position.Z / 1000.0;
+  msg.point.y = joint_position.position.X / 1000.0;
+  msg.point.z = joint_position.position.Y / 1000.0;
+  lf_pub.publish(msg);
+  g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_LEFT_HAND, joint_position);//何故か逆
+  msg.point.x = -joint_position.position.Z / 1000.0;
+  msg.point.y = joint_position.position.X / 1000.0;
+  msg.point.z = joint_position.position.Y / 1000.0;
+  rh_pub.publish(msg);
+  g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_HAND, joint_position);//何故か逆
+  msg.point.x = -joint_position.position.Z / 1000.0;
+  msg.point.y = joint_position.position.X / 1000.0;
+  msg.point.z = joint_position.position.Y / 1000.0;
+  lh_pub.publish(msg);
 
+  for (int i = 0; i < users_count; ++i) {
+    XnUserID user = users[i];
+    if (!g_UserGenerator.GetSkeletonCap().IsTracking(user))
+      continue;
 
-        publishTransform(user, XN_SKEL_HEAD,           frame_id, "head");
-        publishTransform(user, XN_SKEL_NECK,           frame_id, "neck");
-        publishTransform(user, XN_SKEL_TORSO,          frame_id, "torso");
+    publishTransform(user, XN_SKEL_HEAD,           frame_id, "head");
+    publishTransform(user, XN_SKEL_NECK,           frame_id, "neck");
+    publishTransform(user, XN_SKEL_TORSO,          frame_id, "torso");
 
-        publishTransform(user, XN_SKEL_LEFT_SHOULDER,  frame_id, "left_shoulder");
-        publishTransform(user, XN_SKEL_LEFT_ELBOW,     frame_id, "left_elbow");
-        publishTransform(user, XN_SKEL_LEFT_HAND,      frame_id, "left_hand");
+    publishTransform(user, XN_SKEL_LEFT_SHOULDER,  frame_id, "left_shoulder");
+    publishTransform(user, XN_SKEL_LEFT_ELBOW,     frame_id, "left_elbow");
+    publishTransform(user, XN_SKEL_LEFT_HAND,      frame_id, "left_hand");
 
-        publishTransform(user, XN_SKEL_RIGHT_SHOULDER, frame_id, "right_shoulder");
-        publishTransform(user, XN_SKEL_RIGHT_ELBOW,    frame_id, "right_elbow");
-        publishTransform(user, XN_SKEL_RIGHT_HAND,     frame_id, "right_hand");
+    publishTransform(user, XN_SKEL_RIGHT_SHOULDER, frame_id, "right_shoulder");
+    publishTransform(user, XN_SKEL_RIGHT_ELBOW,    frame_id, "right_elbow");
+    publishTransform(user, XN_SKEL_RIGHT_HAND,     frame_id, "right_hand");
 
-        publishTransform(user, XN_SKEL_LEFT_HIP,       frame_id, "left_hip");
-        publishTransform(user, XN_SKEL_LEFT_KNEE,      frame_id, "left_knee");
-        publishTransform(user, XN_SKEL_LEFT_FOOT,      frame_id, "left_foot");
+    publishTransform(user, XN_SKEL_LEFT_HIP,       frame_id, "left_hip");
+    publishTransform(user, XN_SKEL_LEFT_KNEE,      frame_id, "left_knee");
+    publishTransform(user, XN_SKEL_LEFT_FOOT,      frame_id, "left_foot");
 
-        publishTransform(user, XN_SKEL_RIGHT_HIP,      frame_id, "right_hip");
-        publishTransform(user, XN_SKEL_RIGHT_KNEE,     frame_id, "right_knee");
-        publishTransform(user, XN_SKEL_RIGHT_FOOT,     frame_id, "right_foot");
-
-    }
-
-
+    publishTransform(user, XN_SKEL_RIGHT_HIP,      frame_id, "right_hip");
+    publishTransform(user, XN_SKEL_RIGHT_KNEE,     frame_id, "right_knee");
+    publishTransform(user, XN_SKEL_RIGHT_FOOT,     frame_id, "right_foot");
+  }
 }
 
 #define CHECK_RC(nRetVal, what)										\
@@ -188,84 +183,29 @@ void publishTransforms(const std::string& frame_id) {
 	}
 
 
-
-
-void onZMPCB(const geometry_msgs::PointStampedConstPtr& msg) {
-
-	static tf::TransformListener ht_tf_listener;
-	zmpin[0] = msg->point.x;
-	zmpin[1] = msg->point.y;
-	zmpin[2] = msg->point.z;
-    double rfzmp[2],lfzmp[2];
-    const double F_H_OFFSET = 0.03;
-    const double rfpos[3] = {0,-0.1,0},lfpos[3] = {0,0.1,0};
-
-    if( rfw[2] > 1.0e-6 ){
-	    rfzmp[0] = ( -rfw[4] - rfw[0] * F_H_OFFSET + rfw[2] * 0 ) / rfw[2] + rfpos[0];
-	    rfzmp[1] = ( rfw[3] - rfw[1] * F_H_OFFSET + rfw[2] * 0 ) / rfw[2] + rfpos[1];
-    }
-    if( lfw[2] > 1.0e-6 ){
-	    lfzmp[0] = ( -lfw[4] - lfw[0] * F_H_OFFSET + lfw[2] * 0 ) / lfw[2] + lfpos[0];
-	    lfzmp[1] = ( lfw[3] - lfw[1] * F_H_OFFSET + lfw[2] * 0 ) / lfw[2] + lfpos[1];
-    }
-    //zmpansをrfw,lfwから計算
-    if( rfw[2] > 1.0e-6 || lfw[2] > 1.0e-6 ){
-	    zmpans[0] = ( rfzmp[0]*rfw[2] + lfzmp[0]*lfw[2] ) / ( rfw[2] + lfw[2]);
-	    zmpans[1] = ( rfzmp[1]*rfw[2] + lfzmp[1]*lfw[2] ) / ( rfw[2] + lfw[2]);
-	    zmpans[2] = 0;
-    }else{
-	    zmpans[0] = 0;	zmpans[1] = 0;	zmpans[2] = 0;
-    }
-//    for(int i=0;i<3;i++){
-//    	zmpans[i] = zmpans[i] - human_basepos[i];
-//    }
-//	std::cout<<"/zmp: "<<msg->point.x<<" , "<<msg->point.y<<std::endl;//BODY座標
-    
-}
-void onRFWCB(const geometry_msgs::WrenchStampedConstPtr& msg) {
-	rfw[0] = msg->wrench.force.x;	rfw[1] = msg->wrench.force.y;	rfw[2] = msg->wrench.force.z;
-	rfw[3] = msg->wrench.torque.x;	rfw[4] = msg->wrench.torque.y;	rfw[5] = msg->wrench.torque.z;
-}
-void onLFWCB(const geometry_msgs::WrenchStampedConstPtr& msg) {
-	lfw[0] = msg->wrench.force.x;	lfw[1] = msg->wrench.force.y;	lfw[2] = msg->wrench.force.z;
-	lfw[3] = msg->wrench.torque.x;	lfw[4] = msg->wrench.torque.y;	lfw[5] = msg->wrench.torque.z;
-}
-void onBPCB(const geometry_msgs::PointStampedConstPtr& msg) {
-	basepos[0] = msg->point.x;	basepos[1] = msg->point.y;	basepos[2] = msg->point.z;
-}
-
 int main(int argc, char **argv) {
-	fp = fopen("/home/ishiguro/hcflog/nilog.log","w+");
-    ros::init(argc, argv, "openni_tracker");
-    ros::NodeHandle nh;
-	com_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_com_ref", 10);
-	rf_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_rf_ref", 10);
-	lf_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_lf_ref", 10);
-	rh_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_rh_ref", 10);
-	lh_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_lh_ref", 10);
-	h2r_ratio_pub = nh.advertise<std_msgs::Float64>("/human_tracker_h2r_ratio", 10);
-	h_zmp_pub = nh.advertise<std_msgs::Float64>("/human_tracker_human_zmp", 10);
-	r_zmp_pub = nh.advertise<std_msgs::Float64>("/human_tracker_robot_zmp", 10);
-	
-    ros::Subscriber zmp_sub = nh.subscribe("/zmp", 1, &onZMPCB);
-    ros::Subscriber rfw_sub = nh.subscribe("/human_tracker_rfw_ref", 1, &onRFWCB);
-    ros::Subscriber lfw_sub = nh.subscribe("/human_tracker_lfw_ref", 1, &onLFWCB);
-    ros::Subscriber basepos_sub = nh.subscribe("/basepos_ht", 1, &onBPCB);
+  ros::init(argc, argv, "openni_tracker");
+  ros::NodeHandle nh;
+  com_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_com_ref", 10);
+  rf_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_rf_ref", 10);
+  lf_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_lf_ref", 10);
+  rh_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_rh_ref", 10);
+  lh_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_lh_ref", 10);
 
-    string configFilename = ros::package::getPath("openni_tracker") + "/openni_tracker.xml";
-    XnStatus nRetVal = g_Context.InitFromXmlFile(configFilename.c_str());
-    CHECK_RC(nRetVal, "InitFromXml");
+  string configFilename = ros::package::getPath("openni_tracker") + "/openni_tracker.xml";
+  XnStatus nRetVal = g_Context.InitFromXmlFile(configFilename.c_str());
+  CHECK_RC(nRetVal, "InitFromXml");
 
-    nRetVal = g_Context.FindExistingNode(XN_NODE_TYPE_DEPTH, g_DepthGenerator);
-    CHECK_RC(nRetVal, "Find depth generator");
+  nRetVal = g_Context.FindExistingNode(XN_NODE_TYPE_DEPTH, g_DepthGenerator);
+  CHECK_RC(nRetVal, "Find depth generator");
 
-	nRetVal = g_Context.FindExistingNode(XN_NODE_TYPE_USER, g_UserGenerator);
+  nRetVal = g_Context.FindExistingNode(XN_NODE_TYPE_USER, g_UserGenerator);
 	if (nRetVal != XN_STATUS_OK) {
 		nRetVal = g_UserGenerator.Create(g_Context);
-	    if (nRetVal != XN_STATUS_OK) {
-		    ROS_ERROR("NITE is likely missing: Please install NITE >= 1.5.2.21. Check the readme for download information. Error Info: User generator failed: %s", xnGetStatusString(nRetVal));
-            return nRetVal;
-	    }
+    if (nRetVal != XN_STATUS_OK) {
+      ROS_ERROR("NITE is likely missing: Please install NITE >= 1.5.2.21. Check the readme for download information. Error Info: User generator failed: %s", xnGetStatusString(nRetVal));
+      return nRetVal;
+    }
 	}
 
 	if (!g_UserGenerator.IsCapabilitySupported(XN_CAPABILITY_SKELETON)) {
@@ -273,7 +213,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-    XnCallbackHandle hUserCallbacks;
+  XnCallbackHandle hUserCallbacks;
 	g_UserGenerator.RegisterUserCallbacks(User_NewUser, User_LostUser, NULL, hUserCallbacks);
 
 	XnCallbackHandle hCalibrationCallbacks;
@@ -299,10 +239,9 @@ int main(int argc, char **argv) {
 
 	ros::Rate r(30);
 
-        
-        ros::NodeHandle pnh("~");
-        string frame_id("openni_depth_frame");
-        pnh.getParam("camera_frame_id", frame_id);
+  ros::NodeHandle pnh("~");
+  string frame_id("openni_depth_frame");
+  pnh.getParam("camera_frame_id", frame_id);
                 
 	while (ros::ok()) {
 		g_Context.WaitAndUpdateAll();
@@ -312,6 +251,5 @@ int main(int argc, char **argv) {
 	}
 
 	g_Context.Shutdown();
-    fclose(fp);
 	return 0;
 }
