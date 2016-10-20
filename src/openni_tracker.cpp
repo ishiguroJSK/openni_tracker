@@ -113,7 +113,7 @@ void publishTransforms(const std::string& frame_id) {
   XnSkeletonJointPosition joint_position;
   msg.header.frame_id = "camera_link";//ホントは違う
   msg.header.stamp = ros::Time::now();
-  //COMとして体幹位置を送る
+//  //COMとして体幹位置を送る
 //  	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_TORSO, joint_position);
 //  	msg.point.x = -joint_position.position.Z / 1000.0;
 //  	msg.point.y = joint_position.position.X / 1000.0;
@@ -156,22 +156,38 @@ void publishTransforms(const std::string& frame_id) {
     publishTransform(user, XN_SKEL_HEAD,           frame_id, "head");
     publishTransform(user, XN_SKEL_NECK,           frame_id, "neck");
     publishTransform(user, XN_SKEL_TORSO,          frame_id, "torso");
+    //何故か左右逆
+//    publishTransform(user, XN_SKEL_LEFT_SHOULDER,  frame_id, "left_shoulder");
+//    publishTransform(user, XN_SKEL_LEFT_ELBOW,     frame_id, "left_elbow");
+//    publishTransform(user, XN_SKEL_LEFT_HAND,      frame_id, "left_hand");
+//
+//    publishTransform(user, XN_SKEL_RIGHT_SHOULDER, frame_id, "right_shoulder");
+//    publishTransform(user, XN_SKEL_RIGHT_ELBOW,    frame_id, "right_elbow");
+//    publishTransform(user, XN_SKEL_RIGHT_HAND,     frame_id, "right_hand");
+//
+//    publishTransform(user, XN_SKEL_LEFT_HIP,       frame_id, "left_hip");
+//    publishTransform(user, XN_SKEL_LEFT_KNEE,      frame_id, "left_knee");
+//    publishTransform(user, XN_SKEL_LEFT_FOOT,      frame_id, "left_foot");
+//
+//    publishTransform(user, XN_SKEL_RIGHT_HIP,      frame_id, "right_hip");
+//    publishTransform(user, XN_SKEL_RIGHT_KNEE,     frame_id, "right_knee");
+//    publishTransform(user, XN_SKEL_RIGHT_FOOT,     frame_id, "right_foot");
 
-    publishTransform(user, XN_SKEL_LEFT_SHOULDER,  frame_id, "left_shoulder");
-    publishTransform(user, XN_SKEL_LEFT_ELBOW,     frame_id, "left_elbow");
-    publishTransform(user, XN_SKEL_LEFT_HAND,      frame_id, "left_hand");
+    publishTransform(user, XN_SKEL_LEFT_SHOULDER,  frame_id, "right_shoulder");
+    publishTransform(user, XN_SKEL_LEFT_ELBOW,     frame_id, "right_elbow");
+    publishTransform(user, XN_SKEL_LEFT_HAND,      frame_id, "right_hand");
 
-    publishTransform(user, XN_SKEL_RIGHT_SHOULDER, frame_id, "right_shoulder");
-    publishTransform(user, XN_SKEL_RIGHT_ELBOW,    frame_id, "right_elbow");
-    publishTransform(user, XN_SKEL_RIGHT_HAND,     frame_id, "right_hand");
+    publishTransform(user, XN_SKEL_RIGHT_SHOULDER, frame_id, "left_shoulder");
+    publishTransform(user, XN_SKEL_RIGHT_ELBOW,    frame_id, "left_elbow");
+    publishTransform(user, XN_SKEL_RIGHT_HAND,     frame_id, "left_hand");
 
-    publishTransform(user, XN_SKEL_LEFT_HIP,       frame_id, "left_hip");
-    publishTransform(user, XN_SKEL_LEFT_KNEE,      frame_id, "left_knee");
-    publishTransform(user, XN_SKEL_LEFT_FOOT,      frame_id, "left_foot");
+    publishTransform(user, XN_SKEL_LEFT_HIP,       frame_id, "right_hip");
+    publishTransform(user, XN_SKEL_LEFT_KNEE,      frame_id, "right_knee");
+    publishTransform(user, XN_SKEL_LEFT_FOOT,      frame_id, "right_foot");
 
-    publishTransform(user, XN_SKEL_RIGHT_HIP,      frame_id, "right_hip");
-    publishTransform(user, XN_SKEL_RIGHT_KNEE,     frame_id, "right_knee");
-    publishTransform(user, XN_SKEL_RIGHT_FOOT,     frame_id, "right_foot");
+    publishTransform(user, XN_SKEL_RIGHT_HIP,      frame_id, "left_hip");
+    publishTransform(user, XN_SKEL_RIGHT_KNEE,     frame_id, "left_knee");
+    publishTransform(user, XN_SKEL_RIGHT_FOOT,     frame_id, "left_foot");
   }
 }
 
