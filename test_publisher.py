@@ -42,7 +42,7 @@ class App(QMainWindow):
   def main(self):
     global key_list
     self.w = QWidget()
-    self.w.resize(250, 150)
+    self.w.resize(400, 150)
     self.w.setWindowTitle('SliderSample')
     
 #     exitGUI=QApplication.style().standardIcon(QStyle.SP_TitleBarCloseButton)
