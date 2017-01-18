@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 import sys
 import time
+
 import signal
+
 import rospy
-import numpy as np
 from std_msgs.msg import *
 from geometry_msgs.msg import *
 from sensor_msgs.msg import Joy
@@ -14,67 +15,44 @@ pub_val_rf = PointStamped()
 pub_val_lf = PointStamped()
 pub_val_rh = PointStamped()
 pub_val_lh = PointStamped()
-pub_val_list = [pub_val_com, pub_val_rf, pub_val_lf, pub_val_rh, pub_val_lh]
+pub_val_rfw = WrenchStamped()
+pub_val_lfw = WrenchStamped()
+pub_val_list = [pub_val_com, pub_val_rf, pub_val_lf, pub_val_rh, pub_val_lh, pub_val_rfw, pub_val_lfw]
 
-key_list = ["com", "rf", "lf", "rh", "lh"]
-topic_d = {"com":PointStamped, "rf":PointStamped, "lf":PointStamped, "rh":PointStamped, "lh":PointStamped}
+
+key_list = ["com", "rf", "lf", "rh", "lh", "rfw", "lfw"]
+topic_d = {"com":PointStamped, "rf":PointStamped, "lf":PointStamped, "rh":PointStamped, "lh":PointStamped, "rfw":WrenchStamped, "lfw":WrenchStamped}
 
 HZ = 100.0
 
 rf_vel = [0.0, 0.0]
 lf_vel = [0.0, 0.0]
 commode = "IDLE"
-rfon = lfon = Bool()
-f_vel = -0.4/20
-TH_XY = 0
-TH_Z = 20
+
+def callback(data):
+  global rf_vel, lf_vel, commode
+  f_vel = 0.4
+  lf_vel[0] = data.axes[1] * f_vel
+  lf_vel[1] = data.axes[0] * f_vel
+  rf_vel[0] = data.axes[5] * f_vel
+  rf_vel[1] = data.axes[2] * f_vel
   
-def callback_R(data):
-  global rf_vel, rfon, f_vel
-  if np.absolute(data.wrench.force.x) > TH_XY:
-    rf_vel[0] = data.wrench.force.x * f_vel
-  else:
-    rf_vel[0] =0
-  if np.absolute(data.wrench.force.y) > TH_XY:
-    rf_vel[1] = data.wrench.force.y * f_vel
-  else:
-    rf_vel[1] =0
-  if data.wrench.force.z > TH_Z:
-    rfon = True
-  else:
-    rfon = False
-  
-def callback_L(data):
-  global lf_vel, lfon, f_vel
-  if np.absolute(data.wrench.force.x) > TH_XY:
-    lf_vel[0] = data.wrench.force.x * f_vel
-  else:
-    lf_vel[0] =0
-  if np.absolute(data.wrench.force.y) > TH_XY:
-    lf_vel[1] = data.wrench.force.y * f_vel
-  else:
-    lf_vel[1] =0
-  if data.wrench.force.z > TH_Z:
-    lfon = True
-  else:
-    lfon = False
-  
-def pubhumanpose():
-  global rf_vel, lf_vel, commode, pub_val_list, pub_val_com, pub_val_rf, pub_val_lf, pub_val_rh, pub_val_lh, pub_list
-  init_foot_width = 0.1
-  
-  if rfon==True and lfon==True:
+  if data.buttons[4] == 1.0 and data.buttons[5] == 1.0:
     commode = "CENTER"
-  elif rfon==True and lfon==False:
+  elif data.buttons[4] != 1.0 and data.buttons[5] == 1.0:
     commode = "RIGHT"
-  elif rfon==False and lfon==True:
+  elif data.buttons[4] == 1.0 and data.buttons[5] != 1.0:
     commode = "LEFT"
   else:
-    commode = "CENTER"
-    
-  print "com" + commode
+    commode = "IDLE"
+  print "callback"  + commode
   
+  
+def pubhumanpose():
+  global rf_vel, lf_vel, commode, pub_val_list, pub_val_com, pub_val_rf, pub_val_lf, pub_val_rh, pub_val_lh, pub_val_rfw, pub_val_lfw, pub_list
+  init_foot_width = 0.1
   if commode == "CENTER":
+    pub_val_lfw.wrench.force.z = pub_val_rfw.wrench.force.z = 600
     pub_val_com.point.x = ( pub_val_rf.point.x + pub_val_lf.point.x ) / 2
     pub_val_com.point.y = ( pub_val_rf.point.y-init_foot_width + pub_val_lf.point.y+init_foot_width ) / 2
   elif commode == "RIGHT":
@@ -84,6 +62,8 @@ def pubhumanpose():
     elif pub_val_lf.point.x < pub_val_rf.point.x - 0.10: pub_val_lf.point.x = pub_val_rf.point.x - 0.10
     if   pub_val_lf.point.y > pub_val_rf.point.y + 0.10: pub_val_lf.point.y = pub_val_rf.point.y + 0.10
     elif pub_val_lf.point.y < pub_val_rf.point.y - 0.05: pub_val_lf.point.y = pub_val_rf.point.y - 0.05
+    pub_val_lfw.wrench.force.z = 0
+    pub_val_rfw.wrench.force.z = 600
     pub_val_com.point.x = pub_val_rf.point.x
     pub_val_com.point.y = pub_val_rf.point.y-init_foot_width
   elif commode == "LEFT":
@@ -93,9 +73,12 @@ def pubhumanpose():
     elif pub_val_rf.point.x < pub_val_lf.point.x - 0.10: pub_val_rf.point.x = pub_val_lf.point.x - 0.10
     if   pub_val_rf.point.y < pub_val_lf.point.y - 0.10: pub_val_rf.point.y = pub_val_lf.point.y - 0.10
     elif pub_val_rf.point.y > pub_val_lf.point.y + 0.05: pub_val_rf.point.y = pub_val_lf.point.y + 0.05
+    pub_val_lfw.wrench.force.z = 600
+    pub_val_rfw.wrench.force.z = 0
     pub_val_com.point.x = pub_val_lf.point.x
     pub_val_com.point.y = pub_val_lf.point.y+init_foot_width
   else:
+    pub_val_lfw.wrench.force.z = pub_val_rfw.wrench.force.z = 0
     pub_val_com.point.x = ( pub_val_rf.point.x + pub_val_lf.point.x ) / 2
     pub_val_com.point.y = ( pub_val_rf.point.y-init_foot_width + pub_val_lf.point.y+init_foot_width ) / 2
     
@@ -105,14 +88,15 @@ def pubhumanpose():
 
 if __name__ == '__main__':
   signal.signal(signal.SIGINT, signal.SIG_DFL)
-  sub_rfp = rospy.Subscriber("/human_tracker_rfw_ref", WrenchStamped, callback_R)
-  sub_lfp = rospy.Subscriber("/human_tracker_lfw_ref", WrenchStamped, callback_L)
+  sub_joy = rospy.Subscriber("/joy", Joy, callback)
   pub_com = rospy.Publisher('/human_tracker_com_ref', PointStamped, queue_size=10)
   pub_rf = rospy.Publisher('/human_tracker_rf_ref', PointStamped, queue_size=10)
   pub_lf = rospy.Publisher('/human_tracker_lf_ref', PointStamped, queue_size=10)
   pub_rh = rospy.Publisher('/human_tracker_rh_ref', PointStamped, queue_size=10)
   pub_lh = rospy.Publisher('/human_tracker_lh_ref', PointStamped, queue_size=10)
-  pub_list = [pub_com,pub_rf,pub_lf,pub_rh,pub_lh]
+  pub_rfw = rospy.Publisher('/human_tracker_rfw_ref', WrenchStamped, queue_size=10)
+  pub_lfw = rospy.Publisher('/human_tracker_lfw_ref', WrenchStamped, queue_size=10)
+  pub_list = [pub_com,pub_rf,pub_lf,pub_rh,pub_lh,pub_rfw,pub_lfw]
   
   rospy.init_node('humansync_joy_publisher', anonymous=True)
   r = rospy.Rate(HZ)

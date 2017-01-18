@@ -12,17 +12,17 @@ import rospy
 from std_msgs.msg import *
 from geometry_msgs.msg import *
 
-pub_val_com = PointStamped()
-pub_val_rf = PointStamped()
-pub_val_lf = PointStamped()
-pub_val_rh = PointStamped()
-pub_val_lh = PointStamped()
+pub_val_com = PoseStamped()
+pub_val_rf = PoseStamped()
+pub_val_lf = PoseStamped()
+pub_val_rh = PoseStamped()
+pub_val_lh = PoseStamped()
 pub_val_rfw = WrenchStamped()
 pub_val_lfw = WrenchStamped()
 pub_val_list = [pub_val_com, pub_val_rf, pub_val_lf, pub_val_rh, pub_val_lh, pub_val_rfw, pub_val_lfw]
 
 key_list = ["com", "rf", "lf", "rh", "lh", "rfw", "lfw"]
-topic_d = {"com":PointStamped, "rf":PointStamped, "lf":PointStamped, "rh":PointStamped, "lh":PointStamped, "rfw":WrenchStamped, "lfw":WrenchStamped}
+topic_d = {"com":PoseStamped, "rf":PoseStamped, "lf":PoseStamped, "rh":PoseStamped, "lh":PoseStamped, "rfw":WrenchStamped, "lfw":WrenchStamped}
 
 class TestThread(threading.Thread):
 
@@ -80,10 +80,10 @@ class App(QMainWindow):
     global pub_val_list 
     
     for i in range(0, len(key_list)-2):
-      pub_val_list[i].point.x = self.slider_list[i][0].value() / 100.0
-      pub_val_list[i].point.y = self.slider_list[i][1].value() / 100.0
-      pub_val_list[i].point.z = self.slider_list[i][2].value() / 100.0
-      self.label_list[i].setText( key_list[i] + ": %+4.3f"%pub_val_list[i].point.x + " %+4.3f"%pub_val_list[i].point.y + " %+4.3f"%pub_val_list[i].point.z)
+      pub_val_list[i].pose.position.x = self.slider_list[i][0].value() / 100.0
+      pub_val_list[i].pose.position.y = self.slider_list[i][1].value() / 100.0
+      pub_val_list[i].pose.position.z = self.slider_list[i][2].value() / 100.0
+      self.label_list[i].setText( key_list[i] + ": %+4.3f"%pub_val_list[i].pose.position.x + " %+4.3f"%pub_val_list[i].pose.position.y + " %+4.3f"%pub_val_list[i].pose.position.z)
       
     for i in range(len(key_list)-2, len(key_list)):
       pub_val_list[i].wrench.force.x = self.slider_list[i][0].value() * 10.0
@@ -93,11 +93,11 @@ class App(QMainWindow):
 
 if __name__ == '__main__':
   signal.signal(signal.SIGINT, signal.SIG_DFL)
-  pub_com = rospy.Publisher('/human_tracker_com_ref', PointStamped, queue_size=10)
-  pub_rf = rospy.Publisher('/human_tracker_rf_ref', PointStamped, queue_size=10)
-  pub_lf = rospy.Publisher('/human_tracker_lf_ref', PointStamped, queue_size=10)
-  pub_rh = rospy.Publisher('/human_tracker_rh_ref', PointStamped, queue_size=10)
-  pub_lh = rospy.Publisher('/human_tracker_lh_ref', PointStamped, queue_size=10)
+  pub_com = rospy.Publisher('/human_tracker_com_ref', PoseStamped, queue_size=10)
+  pub_rf = rospy.Publisher('/human_tracker_rf_ref', PoseStamped, queue_size=10)
+  pub_lf = rospy.Publisher('/human_tracker_lf_ref', PoseStamped, queue_size=10)
+  pub_rh = rospy.Publisher('/human_tracker_rh_ref', PoseStamped, queue_size=10)
+  pub_lh = rospy.Publisher('/human_tracker_lh_ref', PoseStamped, queue_size=10)
   pub_rfw = rospy.Publisher('/human_tracker_rfw_ref', WrenchStamped, queue_size=10)
   pub_lfw = rospy.Publisher('/human_tracker_lfw_ref', WrenchStamped, queue_size=10)
   pub_list = [pub_com,pub_rf,pub_lf,pub_rh,pub_lh,pub_rfw,pub_lfw]
