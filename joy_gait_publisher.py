@@ -4,24 +4,25 @@ import sys
 import time
 
 import signal
+import numpy as np
 
 import rospy
 from std_msgs.msg import *
 from geometry_msgs.msg import *
 from sensor_msgs.msg import Joy
 
-pub_val_com = PointStamped()
-pub_val_rf = PointStamped()
-pub_val_lf = PointStamped()
-pub_val_rh = PointStamped()
-pub_val_lh = PointStamped()
+pub_val_com = PoseStamped()
+pub_val_rf = PoseStamped()
+pub_val_lf = PoseStamped()
+pub_val_rh = PoseStamped()
+pub_val_lh = PoseStamped()
 pub_val_rfw = WrenchStamped()
 pub_val_lfw = WrenchStamped()
 pub_val_list = [pub_val_com, pub_val_rf, pub_val_lf, pub_val_rh, pub_val_lh, pub_val_rfw, pub_val_lfw]
 
 
 key_list = ["com", "rf", "lf", "rh", "lh", "rfw", "lfw"]
-topic_d = {"com":PointStamped, "rf":PointStamped, "lf":PointStamped, "rh":PointStamped, "lh":PointStamped, "rfw":WrenchStamped, "lfw":WrenchStamped}
+topic_d = {"com":PoseStamped, "rf":PoseStamped, "lf":PoseStamped, "rh":PoseStamped, "lh":PoseStamped, "rfw":WrenchStamped, "lfw":WrenchStamped}
 
 HZ = 100.0
 
@@ -49,38 +50,41 @@ def callback(data):
   
   
 def pubhumanpose():
-  global rf_vel, lf_vel, commode, pub_val_list, pub_val_com, pub_val_rf, pub_val_lf, pub_val_rh, pub_val_lh, pub_val_rfw, pub_val_lfw, pub_list
-  init_foot_width = 0.1
+  global pub_val_list, pub_val_com, pub_val_rf, pub_val_lf, pub_val_rh, pub_val_lh, pub_val_rfw, pub_val_lfw, pub_list
   if commode == "CENTER":
     pub_val_lfw.wrench.force.z = pub_val_rfw.wrench.force.z = 600
-    pub_val_com.point.x = ( pub_val_rf.point.x + pub_val_lf.point.x ) / 2
-    pub_val_com.point.y = ( pub_val_rf.point.y-init_foot_width + pub_val_lf.point.y+init_foot_width ) / 2
+    pub_val_com.pose.position.x = ( pub_val_rf.pose.position.x + pub_val_lf.pose.position.x ) / 2
+    pub_val_com.pose.position.y = ( pub_val_rf.pose.position.y + pub_val_lf.pose.position.y ) / 2
   elif commode == "RIGHT":
-    pub_val_lf.point.x += lf_vel[0] / HZ
-    pub_val_lf.point.y += lf_vel[1] / HZ
-    if   pub_val_lf.point.x > pub_val_rf.point.x + 0.15: pub_val_lf.point.x = pub_val_rf.point.x + 0.15
-    elif pub_val_lf.point.x < pub_val_rf.point.x - 0.10: pub_val_lf.point.x = pub_val_rf.point.x - 0.10
-    if   pub_val_lf.point.y > pub_val_rf.point.y + 0.10: pub_val_lf.point.y = pub_val_rf.point.y + 0.10
-    elif pub_val_lf.point.y < pub_val_rf.point.y - 0.05: pub_val_lf.point.y = pub_val_rf.point.y - 0.05
+    pub_val_lf.pose.position.x += lf_vel[0] / HZ
+    pub_val_lf.pose.position.y += lf_vel[1] / HZ
+    r2l_vec = np.array([pub_val_lf.pose.position.x - pub_val_rf.pose.position.x, pub_val_lf.pose.position.y - pub_val_rf.pose.position.y])
+    if np.linalg.norm(r2l_vec) > 0.3:
+      pub_val_lf.pose.position.x = 0.3 * r2l_vec[0]/np.linalg.norm(r2l_vec) + pub_val_rf.pose.position.x
+      pub_val_lf.pose.position.y = 0.3 * r2l_vec[1]/np.linalg.norm(r2l_vec) + pub_val_rf.pose.position.y
+    if pub_val_lf.pose.position.y < pub_val_rf.pose.position.y + 0.16:
+      pub_val_lf.pose.position.y = pub_val_rf.pose.position.y + 0.16
     pub_val_lfw.wrench.force.z = 0
     pub_val_rfw.wrench.force.z = 600
-    pub_val_com.point.x = pub_val_rf.point.x
-    pub_val_com.point.y = pub_val_rf.point.y-init_foot_width
+    pub_val_com.pose.position.x = pub_val_rf.pose.position.x
+    pub_val_com.pose.position.y = pub_val_rf.pose.position.y
   elif commode == "LEFT":
-    pub_val_rf.point.x += rf_vel[0] / HZ
-    pub_val_rf.point.y += rf_vel[1] / HZ
-    if   pub_val_rf.point.x > pub_val_lf.point.x + 0.15: pub_val_rf.point.x = pub_val_lf.point.x + 0.15
-    elif pub_val_rf.point.x < pub_val_lf.point.x - 0.10: pub_val_rf.point.x = pub_val_lf.point.x - 0.10
-    if   pub_val_rf.point.y < pub_val_lf.point.y - 0.10: pub_val_rf.point.y = pub_val_lf.point.y - 0.10
-    elif pub_val_rf.point.y > pub_val_lf.point.y + 0.05: pub_val_rf.point.y = pub_val_lf.point.y + 0.05
+    pub_val_rf.pose.position.x += rf_vel[0] / HZ
+    pub_val_rf.pose.position.y += rf_vel[1] / HZ
+    l2r_vec = np.array([pub_val_rf.pose.position.x - pub_val_lf.pose.position.x, pub_val_rf.pose.position.y - pub_val_lf.pose.position.y])
+    if np.linalg.norm(l2r_vec) > 0.3:
+      pub_val_rf.pose.position.x = 0.3 * l2r_vec[0]/np.linalg.norm(l2r_vec) + pub_val_lf.pose.position.x
+      pub_val_rf.pose.position.y = 0.3 * l2r_vec[1]/np.linalg.norm(l2r_vec) + pub_val_lf.pose.position.y
+    if pub_val_rf.pose.position.y > pub_val_lf.pose.position.y - 0.16:
+      pub_val_rf.pose.position.y = pub_val_lf.pose.position.y - 0.16
     pub_val_lfw.wrench.force.z = 600
     pub_val_rfw.wrench.force.z = 0
-    pub_val_com.point.x = pub_val_lf.point.x
-    pub_val_com.point.y = pub_val_lf.point.y+init_foot_width
+    pub_val_com.pose.position.x = pub_val_lf.pose.position.x
+    pub_val_com.pose.position.y = pub_val_lf.pose.position.y
   else:
     pub_val_lfw.wrench.force.z = pub_val_rfw.wrench.force.z = 0
-    pub_val_com.point.x = ( pub_val_rf.point.x + pub_val_lf.point.x ) / 2
-    pub_val_com.point.y = ( pub_val_rf.point.y-init_foot_width + pub_val_lf.point.y+init_foot_width ) / 2
+    pub_val_com.pose.position.x = ( pub_val_rf.pose.position.x + pub_val_lf.pose.position.x ) / 2
+    pub_val_com.pose.position.y = ( pub_val_rf.pose.position.y + pub_val_lf.pose.position.y ) / 2
     
   for i in range(len(pub_list)):
     pub_list[i].publish(pub_val_list[i])
@@ -89,17 +93,20 @@ def pubhumanpose():
 if __name__ == '__main__':
   signal.signal(signal.SIGINT, signal.SIG_DFL)
   sub_joy = rospy.Subscriber("/joy", Joy, callback)
-  pub_com = rospy.Publisher('/human_tracker_com_ref', PointStamped, queue_size=10)
-  pub_rf = rospy.Publisher('/human_tracker_rf_ref', PointStamped, queue_size=10)
-  pub_lf = rospy.Publisher('/human_tracker_lf_ref', PointStamped, queue_size=10)
-  pub_rh = rospy.Publisher('/human_tracker_rh_ref', PointStamped, queue_size=10)
-  pub_lh = rospy.Publisher('/human_tracker_lh_ref', PointStamped, queue_size=10)
+  pub_com = rospy.Publisher('/human_tracker_com_ref', PoseStamped, queue_size=10)
+  pub_rf = rospy.Publisher('/human_tracker_rf_ref', PoseStamped, queue_size=10)
+  pub_lf = rospy.Publisher('/human_tracker_lf_ref', PoseStamped, queue_size=10)
+  pub_rh = rospy.Publisher('/human_tracker_rh_ref', PoseStamped, queue_size=10)
+  pub_lh = rospy.Publisher('/human_tracker_lh_ref', PoseStamped, queue_size=10)
   pub_rfw = rospy.Publisher('/human_tracker_rfw_ref', WrenchStamped, queue_size=10)
   pub_lfw = rospy.Publisher('/human_tracker_lfw_ref', WrenchStamped, queue_size=10)
   pub_list = [pub_com,pub_rf,pub_lf,pub_rh,pub_lh,pub_rfw,pub_lfw]
   
   rospy.init_node('humansync_joy_publisher', anonymous=True)
   r = rospy.Rate(HZ)
+  global pub_val_rf, pub_val_lf
+  pub_val_rf.pose.position.y = -0.1
+  pub_val_lf.pose.position.y = 0.1
   
   print "start ROS pub loop"
   while not rospy.is_shutdown():
