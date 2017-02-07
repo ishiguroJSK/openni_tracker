@@ -109,7 +109,7 @@ void publishTransforms(const std::string& frame_id) {
   XnUInt16 users_count = 15;
   g_UserGenerator.GetUsers(users, users_count);
 
-  geometry_msgs::PointStamped msg;
+  geometry_msgs::PoseStamped msg;
   XnSkeletonJointPosition joint_position;
   msg.header.frame_id = "camera_link";//ホントは違う
   msg.header.stamp = ros::Time::now();
@@ -123,29 +123,29 @@ void publishTransforms(const std::string& frame_id) {
   //COMとしてCOMを送る
   XnPoint3D com_position;
   g_UserGenerator.GetCoM(users[0], com_position);
-  msg.point.x = -com_position.Z / 1000.0;
-  msg.point.y = com_position.X / 1000.0;
-  msg.point.z = com_position.Y / 1000.0;
+  msg.pose.position.x = -com_position.Z / 1000.0;
+  msg.pose.position.y = com_position.X / 1000.0;
+  msg.pose.position.z = com_position.Y / 1000.0;
   com_pub.publish(msg);
   g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_LEFT_FOOT, joint_position);//何故か逆
-  msg.point.x = -joint_position.position.Z / 1000.0;
-  msg.point.y = joint_position.position.X / 1000.0;
-  msg.point.z = joint_position.position.Y / 1000.0;
+  msg.pose.position.x = -joint_position.position.Z / 1000.0;
+  msg.pose.position.y = joint_position.position.X / 1000.0;
+  msg.pose.position.z = joint_position.position.Y / 1000.0;
   rf_pub.publish(msg);
   g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_FOOT, joint_position);//何故か逆
-  msg.point.x = -joint_position.position.Z / 1000.0;
-  msg.point.y = joint_position.position.X / 1000.0;
-  msg.point.z = joint_position.position.Y / 1000.0;
+  msg.pose.position.x = -joint_position.position.Z / 1000.0;
+  msg.pose.position.y = joint_position.position.X / 1000.0;
+  msg.pose.position.z = joint_position.position.Y / 1000.0;
   lf_pub.publish(msg);
   g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_LEFT_HAND, joint_position);//何故か逆
-  msg.point.x = -joint_position.position.Z / 1000.0;
-  msg.point.y = joint_position.position.X / 1000.0;
-  msg.point.z = joint_position.position.Y / 1000.0;
+  msg.pose.position.x = -joint_position.position.Z / 1000.0;
+  msg.pose.position.y = joint_position.position.X / 1000.0;
+  msg.pose.position.z = joint_position.position.Y / 1000.0;
   rh_pub.publish(msg);
   g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_RIGHT_HAND, joint_position);//何故か逆
-  msg.point.x = -joint_position.position.Z / 1000.0;
-  msg.point.y = joint_position.position.X / 1000.0;
-  msg.point.z = joint_position.position.Y / 1000.0;
+  msg.pose.position.x = -joint_position.position.Z / 1000.0;
+  msg.pose.position.y = joint_position.position.X / 1000.0;
+  msg.pose.position.z = joint_position.position.Y / 1000.0;
   lh_pub.publish(msg);
 
   for (int i = 0; i < users_count; ++i) {
@@ -202,11 +202,11 @@ void publishTransforms(const std::string& frame_id) {
 int main(int argc, char **argv) {
   ros::init(argc, argv, "openni_tracker");
   ros::NodeHandle nh;
-  com_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_com_ref", 10);
-  rf_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_rf_ref", 10);
-  lf_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_lf_ref", 10);
-  rh_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_rh_ref", 10);
-  lh_pub = nh.advertise<geometry_msgs::PointStamped>("/human_tracker_lh_ref", 10);
+  com_pub = nh.advertise<geometry_msgs::PoseStamped>("/human_tracker_com_ref", 10);
+  rf_pub = nh.advertise<geometry_msgs::PoseStamped>("/human_tracker_rf_ref", 10);
+  lf_pub = nh.advertise<geometry_msgs::PoseStamped>("/human_tracker_lf_ref", 10);
+  rh_pub = nh.advertise<geometry_msgs::PoseStamped>("/human_tracker_rh_ref", 10);
+  lh_pub = nh.advertise<geometry_msgs::PoseStamped>("/human_tracker_lh_ref", 10);
 
   string configFilename = ros::package::getPath("openni_tracker") + "/openni_tracker.xml";
   XnStatus nRetVal = g_Context.InitFromXmlFile(configFilename.c_str());
