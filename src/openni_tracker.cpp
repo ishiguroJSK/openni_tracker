@@ -10,9 +10,6 @@
 #include <XnCodecIDs.h>
 #include <XnCppWrapper.h>
 
-#include <std_msgs/Float64.h>
-#include <geometry_msgs/WrenchStamped.h>
-
 using std::string;
 
 xn::Context        g_Context;
@@ -100,9 +97,6 @@ void publishTransform(XnUserID const& user, XnSkeletonJoint const& joint, string
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), frame_id, child_frame_no));
 }
 
-bool do_check = false;
-#include <tf/transform_listener.h>
-tf::StampedTransform transform;
 
 void publishTransforms(const std::string& frame_id) {
   XnUserID users[15];
@@ -111,7 +105,7 @@ void publishTransforms(const std::string& frame_id) {
 
   geometry_msgs::PoseStamped msg;
   XnSkeletonJointPosition joint_position;
-  msg.header.frame_id = "camera_link";//ホントは違う
+  msg.header.frame_id = "world_openni";//ホントは違う
   msg.header.stamp = ros::Time::now();
 //  //COMとして体幹位置を送る
 //  	g_UserGenerator.GetSkeletonCap().GetSkeletonJointPosition(users[0], XN_SKEL_TORSO, joint_position);
@@ -202,11 +196,11 @@ void publishTransforms(const std::string& frame_id) {
 int main(int argc, char **argv) {
   ros::init(argc, argv, "openni_tracker");
   ros::NodeHandle nh;
-  com_pub = nh.advertise<geometry_msgs::PoseStamped>("/human_tracker_com_ref", 10);
-  rf_pub = nh.advertise<geometry_msgs::PoseStamped>("/human_tracker_rf_ref", 10);
-  lf_pub = nh.advertise<geometry_msgs::PoseStamped>("/human_tracker_lf_ref", 10);
-  rh_pub = nh.advertise<geometry_msgs::PoseStamped>("/human_tracker_rh_ref", 10);
-  lh_pub = nh.advertise<geometry_msgs::PoseStamped>("/human_tracker_lh_ref", 10);
+  com_pub = nh.advertise<geometry_msgs::PoseStamped>("/openni_com_pose", 10);
+  rf_pub = nh.advertise<geometry_msgs::PoseStamped>("/openni_rf_pose", 10);
+  lf_pub = nh.advertise<geometry_msgs::PoseStamped>("/openni_lf_pose", 10);
+  rh_pub = nh.advertise<geometry_msgs::PoseStamped>("/openni_rh_pose", 10);
+  lh_pub = nh.advertise<geometry_msgs::PoseStamped>("/openni_lh_pose", 10);
 
   string configFilename = ros::package::getPath("openni_tracker") + "/openni_tracker.xml";
   XnStatus nRetVal = g_Context.InitFromXmlFile(configFilename.c_str());
